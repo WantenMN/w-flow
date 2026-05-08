@@ -6,6 +6,11 @@
   "engines": {
     "vscode": "^1.118.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WantenMN/w-flow.git"
+  },
+  "publisher": "Wanten",
   "categories": [
     "Other"
   ],
@@ -37,15 +42,17 @@
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "release": "vsce package"
   },
   "devDependencies": {
-    "@types/vscode": "^1.118.0",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.56.1",
-    "eslint": "^9.39.3",
+    "@types/vscode": "^1.118.0",
+    "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
     "npm-run-all": "^4.1.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
   }
 }
