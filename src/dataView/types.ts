@@ -73,6 +73,8 @@ export interface TableDataMessage {
   activeView: string;
   baseFiles: string[];
   activeBaseFile: string;
+  allProperties: string[];
+  sort: SortConfig[];
 }
 
 export interface ColumnDef {

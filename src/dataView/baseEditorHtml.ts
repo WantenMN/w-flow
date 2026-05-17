@@ -63,6 +63,44 @@ export function getBaseEditorHtml(
       background: var(--vscode-button-secondaryHoverBackground);
     }
 
+    /* Column picker */
+    .col-picker-wrap {
+      position: relative;
+    }
+    .col-picker-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: var(--vscode-dropdown-background);
+      border: 1px solid var(--vscode-dropdown-border);
+      border-radius: 4px;
+      padding: 4px 0;
+      min-width: 180px;
+      max-height: 320px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .col-picker-dropdown.open { display: block; }
+    .col-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .col-picker-item:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+    .col-picker-item input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
     /* Main layout */
     .main {
       flex: 1;
@@ -152,6 +190,7 @@ export function getBaseEditorHtml(
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
     }
     th:hover {
       background: var(--vscode-list-hoverBackground);
@@ -160,6 +199,25 @@ export function getBaseEditorHtml(
       margin-left: 4px;
       font-size: 10px;
       opacity: 0.6;
+    }
+    /* Drag state */
+    th.drag-over-left { box-shadow: inset 2px 0 0 var(--vscode-focusBorder); }
+    th.drag-over-right { box-shadow: inset -2px 0 0 var(--vscode-focusBorder); }
+    th.dragging { opacity: 0.4; }
+
+    /* Resize handle */
+    th .resize-handle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 5px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 2;
+    }
+    th .resize-handle:hover,
+    th .resize-handle.active {
+      background: var(--vscode-focusBorder);
     }
     td {
       padding: 4px 12px;
@@ -220,6 +278,10 @@ export function getBaseEditorHtml(
   <div class="header">
     <h2>Base Editor</h2>
     <div class="header-actions">
+      <div class="col-picker-wrap">
+        <button class="btn btn-secondary" id="colPickerBtn">Columns</button>
+        <div class="col-picker-dropdown" id="colPickerDropdown"></div>
+      </div>
       <button class="btn btn-secondary" id="filterBtn">Filters</button>
       <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
       <button class="btn btn-secondary" id="sourceBtn">View Source</button>
@@ -249,17 +311,21 @@ export function getBaseEditorHtml(
   <script>
     const vscode = acquireVsCodeApi();
     let currentData = null;
-    let activeSortProperty = null;
-    let activeSortDirection = 'ASC';
     let baseContent = '';
     let filterInfo = { global: [], view: [] };
+    let allProperties = [];
+    let currentOrder = [];
+    let currentSort = [];
 
-    // Message handler
+    // --- Message handler ---
     window.addEventListener('message', (event) => {
       const msg = event.data;
       switch (msg.type) {
         case 'updateTable':
           currentData = msg;
+          allProperties = msg.allProperties || [];
+          currentOrder = msg.columns.map(c => c.key);
+          currentSort = msg.sort || [];
           renderTable(msg);
           break;
         case 'baseContent':
@@ -275,30 +341,74 @@ export function getBaseEditorHtml(
       }
     });
 
-    // Button handlers
+    // --- Button handlers ---
     document.getElementById('filterBtn').addEventListener('click', () => {
       vscode.postMessage({ type: 'openFilterEditor' });
     });
-
     document.getElementById('refreshBtn').addEventListener('click', () => {
       vscode.postMessage({ type: 'refresh' });
     });
-
     document.getElementById('sourceBtn').addEventListener('click', () => {
       vscode.postMessage({ type: 'openSource' });
     });
 
+    // --- Column picker ---
+    const colPickerBtn = document.getElementById('colPickerBtn');
+    const colPickerDropdown = document.getElementById('colPickerDropdown');
+
+    colPickerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderColPicker();
+      colPickerDropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', () => {
+      colPickerDropdown.classList.remove('open');
+    });
+
+    colPickerDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    function renderColPicker() {
+      colPickerDropdown.innerHTML = '';
+      for (const prop of allProperties) {
+        const item = document.createElement('label');
+        item.className = 'col-picker-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = currentOrder.includes(prop);
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            if (!currentOrder.includes(prop)) {
+              currentOrder.push(prop);
+            }
+          } else {
+            currentOrder = currentOrder.filter(k => k !== prop);
+          }
+          vscode.postMessage({ type: 'updateViewConfig', config: { order: currentOrder } });
+        });
+        item.appendChild(cb);
+        item.appendChild(document.createTextNode(formatLabel(prop)));
+        colPickerDropdown.appendChild(item);
+      }
+    }
+
+    function formatLabel(key) {
+      const parts = key.split('.');
+      return parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1);
+    }
+
+    // --- Filter summary ---
     function renderFilterSummary() {
       const summary = document.getElementById('filterSummary');
       const badges = [];
-
       if (filterInfo.global && filterInfo.global.length > 0) {
         badges.push('<span class="filter-badge">Global: ' + filterInfo.global.length + ' groups</span>');
       }
       if (filterInfo.view && filterInfo.view.length > 0) {
         badges.push('<span class="filter-badge">View: ' + filterInfo.view.length + ' groups</span>');
       }
-
       if (badges.length === 0) {
         summary.innerHTML = '<span style="color: var(--vscode-descriptionForeground)">No filters applied - showing all files</span>';
       } else {
@@ -306,8 +416,9 @@ export function getBaseEditorHtml(
       }
     }
 
+    // --- Table rendering ---
     function renderTable(data) {
-      // Update view tabs
+      // View tabs
       const tabsContainer = document.getElementById('viewTabs');
       tabsContainer.innerHTML = '';
       for (const tab of data.viewTabs) {
@@ -320,7 +431,7 @@ export function getBaseEditorHtml(
         tabsContainer.appendChild(div);
       }
 
-      // Update table
+      // Table
       const container = document.getElementById('tableContainer');
       if (!data.columns || data.columns.length === 0 || !data.rows || data.rows.length === 0) {
         container.innerHTML = '<div class="empty-state"><div>No matching files</div><p>Try adjusting your filters</p></div>';
@@ -331,7 +442,7 @@ export function getBaseEditorHtml(
       container.innerHTML = '';
       const table = document.createElement('table');
 
-      // Column widths
+      // Colgroup
       const colgroup = document.createElement('colgroup');
       for (const col of data.columns) {
         const colEl = document.createElement('col');
@@ -343,24 +454,112 @@ export function getBaseEditorHtml(
       // Header
       const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');
-      for (const col of data.columns) {
+      let dragSrcIndex = -1;
+
+      for (let i = 0; i < data.columns.length; i++) {
+        const col = data.columns[i];
         const th = document.createElement('th');
+        th.draggable = true;
+        th.dataset.colIndex = i;
         th.textContent = col.label;
-        if (activeSortProperty === col.key) {
+
+        // Drag events for reordering
+        th.addEventListener('dragstart', (e) => {
+          dragSrcIndex = i;
+          th.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', col.key);
+        });
+        th.addEventListener('dragend', () => {
+          th.classList.remove('dragging');
+          headerRow.querySelectorAll('th').forEach(h => {
+            h.classList.remove('drag-over-left', 'drag-over-right');
+          });
+        });
+        th.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const rect = th.getBoundingClientRect();
+          const mid = rect.left + rect.width / 2;
+          headerRow.querySelectorAll('th').forEach(h => {
+            h.classList.remove('drag-over-left', 'drag-over-right');
+          });
+          if (e.clientX < mid) {
+            th.classList.add('drag-over-left');
+          } else {
+            th.classList.add('drag-over-right');
+          }
+        });
+        th.addEventListener('dragleave', () => {
+          th.classList.remove('drag-over-left', 'drag-over-right');
+        });
+        th.addEventListener('drop', (e) => {
+          e.preventDefault();
+          th.classList.remove('drag-over-left', 'drag-over-right');
+          if (dragSrcIndex < 0 || dragSrcIndex === i) return;
+          const rect = th.getBoundingClientRect();
+          const mid = rect.left + rect.width / 2;
+          let insertIndex = e.clientX < mid ? i : i + 1;
+          if (dragSrcIndex < insertIndex) insertIndex--;
+          // Reorder
+          const moved = currentOrder.splice(dragSrcIndex, 1)[0];
+          currentOrder.splice(insertIndex, 0, moved);
+          vscode.postMessage({ type: 'updateViewConfig', config: { order: currentOrder } });
+          dragSrcIndex = -1;
+        });
+
+        // Sort indicator from server data
+        const sortEntry = currentSort.find(s => s.property === col.key);
+        if (sortEntry) {
           const indicator = document.createElement('span');
           indicator.className = 'sort-indicator';
-          indicator.textContent = activeSortDirection === 'ASC' ? '\\u25B2' : '\\u25BC';
+          indicator.textContent = sortEntry.direction === 'ASC' ? '\\u25B2' : '\\u25BC';
           th.appendChild(indicator);
         }
-        th.addEventListener('click', () => {
-          if (activeSortProperty === col.key) {
-            activeSortDirection = activeSortDirection === 'ASC' ? 'DESC' : 'ASC';
+
+        // Sort click
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('resize-handle')) return;
+          const existing = currentSort.find(s => s.property === col.key);
+          let newSort;
+          if (existing) {
+            const newDir = existing.direction === 'ASC' ? 'DESC' : 'ASC';
+            newSort = [{ property: col.key, direction: newDir }];
           } else {
-            activeSortProperty = col.key;
-            activeSortDirection = 'ASC';
+            newSort = [{ property: col.key, direction: 'ASC' }];
           }
-          vscode.postMessage({ type: 'sortColumn', property: col.key, direction: activeSortDirection });
+          vscode.postMessage({ type: 'sortColumn', property: col.key, direction: newSort[0].direction });
         });
+
+        // Resize handle
+        const handle = document.createElement('div');
+        handle.className = 'resize-handle';
+        handle.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handle.classList.add('active');
+          const startX = e.clientX;
+          const startWidth = col.width || th.offsetWidth;
+          const colEl = colgroup.children[i];
+
+          const onMove = (ev) => {
+            const delta = ev.clientX - startX;
+            const newWidth = Math.max(40, startWidth + delta);
+            colEl.style.width = newWidth + 'px';
+          };
+          const onUp = (ev) => {
+            handle.classList.remove('active');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            const delta = ev.clientX - startX;
+            const newWidth = Math.max(40, startWidth + delta);
+            vscode.postMessage({ type: 'updateViewConfig', config: { columnSize: { [col.key]: newWidth } } });
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+        th.appendChild(handle);
+
         headerRow.appendChild(th);
       }
       thead.appendChild(headerRow);

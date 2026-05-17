@@ -33,6 +33,10 @@ export class DataEngine {
     return this.activeViewName;
   }
 
+  getConfig(): BaseConfig | null {
+    return this.config;
+  }
+
   async initialize(): Promise<void> {
     console.log(`[w-flow] Initializing data engine, vault: ${this.vaultPath}`);
     setStoragePath(this.storagePath);
@@ -107,6 +111,8 @@ export class DataEngine {
         activeView: "",
         baseFiles: [],
         activeBaseFile: "",
+        allProperties: [],
+        sort: [],
       };
     }
 
@@ -120,6 +126,8 @@ export class DataEngine {
         activeView: this.activeViewName,
         baseFiles: [],
         activeBaseFile: this.baseFilePath,
+        allProperties: [],
+        sort: [],
       };
     }
 
@@ -150,6 +158,19 @@ export class DataEngine {
       filePath: entry.fullPath,
     }));
 
+    // Collect all available properties from all files
+    const allProps = new Set<string>();
+    allProps.add("file.name");
+    allProps.add("file.folder");
+    allProps.add("file.ext");
+    allProps.add("file.size");
+    allProps.add("file.tags");
+    for (const entry of allFiles) {
+      for (const key of Object.keys(entry.frontmatter)) {
+        allProps.add(key);
+      }
+    }
+
     return {
       type: "updateTable",
       columns,
@@ -158,6 +179,8 @@ export class DataEngine {
       activeView: this.activeViewName,
       baseFiles: [],
       activeBaseFile: this.baseFilePath,
+      allProperties: [...allProps].sort(),
+      sort: view.sort,
     };
   }
 }

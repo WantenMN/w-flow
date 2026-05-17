@@ -5,7 +5,7 @@ import { getBaseEditorHtml } from "./baseEditorHtml";
 import { getFilterEditorHtml } from "./filterEditorHtml";
 import { parseFilterExpression } from "./filterParser";
 import { VAULT_PATH } from "./constants";
-import type { TableDataMessage, FilterGroup, FilterNode } from "./types";
+import type { TableDataMessage, FilterGroup, FilterNode, SortConfig } from "./types";
 
 interface FilterCondition {
   property: string;
@@ -81,7 +81,11 @@ export class BaseEditorProvider implements vscode.CustomReadonlyEditorProvider {
             break;
 
           case "sortColumn":
-            await this.engine.setActiveView(this.engine.getActiveViewName());
+            await this.saveViewConfig(document.uri, { sort: [{ property: msg.property, direction: msg.direction }] });
+            break;
+
+          case "updateViewConfig":
+            await this.saveViewConfig(document.uri, msg.config);
             break;
 
           case "openFile":
@@ -400,6 +404,54 @@ export class BaseEditorProvider implements vscode.CustomReadonlyEditorProvider {
     }
 
     return { [group.logic]: conditions };
+  }
+
+  private async saveViewConfig(
+    uri: vscode.Uri,
+    changes: { order?: string[]; columnSize?: Record<string, number>; sort?: SortConfig[] },
+  ): Promise<void> {
+    let content: string;
+    try {
+      content = await fs.readFile(uri.fsPath, "utf-8");
+    } catch {
+      return;
+    }
+
+    const yaml = require("yaml");
+    let raw: Record<string, unknown>;
+    try {
+      raw = yaml.parse(content) || {};
+    } catch {
+      return;
+    }
+
+    if (!raw.views || !Array.isArray(raw.views)) {
+      return;
+    }
+
+    const viewName = this.engine.getActiveViewName();
+    const views = raw.views as Record<string, unknown>[];
+    const viewIndex = views.findIndex((v) => v.name === viewName);
+    if (viewIndex < 0) {
+      return;
+    }
+
+    const view = views[viewIndex];
+
+    if (changes.sort) {
+      view.sort = changes.sort;
+    }
+    if (changes.columnSize) {
+      const existing = (view.columnSize as Record<string, number>) || {};
+      view.columnSize = { ...existing, ...changes.columnSize };
+    }
+    if (changes.order) {
+      view.order = changes.order;
+    }
+
+    const newContent = yaml.stringify(raw, { lineWidth: -1 });
+    await fs.writeFile(uri.fsPath, newContent, "utf-8");
+    await this.engine.loadBaseFromContent(newContent, uri.fsPath);
   }
 
   private async openFile(filePath: string): Promise<void> {
