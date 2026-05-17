@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { openDailyLog } from "./commands/dailyLog";
 import { insertTime } from "./commands/insertTime";
+import { createNote } from "./commands/createNote";
+import { insertNoteTemplate } from "./commands/insertNoteTemplate";
 import { BaseEditorProvider } from "./dataView/baseEditorProvider";
 import { VAULT_PATH } from "./dataView/constants";
 
@@ -38,6 +40,8 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("w-flow.openDailyLog", openDailyLog),
     vscode.commands.registerCommand("w-flow.insertTime", insertTime),
+    vscode.commands.registerCommand("w-flow.createNote", createNote),
+    vscode.commands.registerCommand("w-flow.insertNoteTemplate", insertNoteTemplate),
     vscode.commands.registerCommand("w-flow.openDataView", async () => {
       const baseFiles = await vscode.workspace.findFiles("*.base");
       if (baseFiles.length > 0) {

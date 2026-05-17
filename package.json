@@ -31,6 +31,14 @@
       {
         "command": "w-flow.openDataView",
         "title": "Open Data Statistics View"
+      },
+      {
+        "command": "w-flow.createNote",
+        "title": "Create Note"
+      },
+      {
+        "command": "w-flow.insertNoteTemplate",
+        "title": "Insert Note Template"
       }
     ],
     "keybindings": [
