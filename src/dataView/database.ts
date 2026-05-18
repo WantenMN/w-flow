@@ -16,10 +16,8 @@ export async function getDatabase(storagePath: string): Promise<SqlJsDatabase> {
   }
   dbPath = path.join(storagePath, "index.db");
 
-  // Locate the WASM file for sql.js
-  const sqlJsPath = require.resolve("sql.js");
-  const sqlJsDir = path.dirname(sqlJsPath);
-  const wasmPath = path.join(sqlJsDir, "sql-wasm.wasm");
+  // Locate the WASM file for sql.js (bundled alongside extension.js)
+  const wasmPath = path.join(__dirname, "sql-wasm.wasm");
 
   const SQL = await initSqlJs({
     locateFile: () => wasmPath,
