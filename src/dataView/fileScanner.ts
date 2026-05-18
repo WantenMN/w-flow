@@ -9,11 +9,13 @@ import {
   removeFileFromDb,
   getAllFilesFromDb,
   getFileCountFromDb,
+  getDbMtimes,
 } from "./database";
 import type { FileEntry, FileProperties } from "./types";
 
 let db: import("sql.js").Database | null = null;
 let storagePath = "";
+let validated = false;
 
 export function setStoragePath(path: string): void {
   storagePath = path;
@@ -28,21 +30,63 @@ async function ensureDb(): Promise<import("sql.js").Database> {
 
 export async function scanVault(vaultPath: string): Promise<void> {
   const database = await ensureDb();
-  const existingCount = getFileCountFromDb(database);
 
-  if (existingCount > 0) {
-    console.log(`[w-flow] Database already has ${existingCount} files, skipping full scan`);
+  if (!validated) {
+    validated = true;
+    await incrementalSync(vaultPath, database);
     return;
   }
 
-  console.log(`[w-flow] Starting full vault scan: ${vaultPath}`);
-  await walkDir(vaultPath, vaultPath, database);
-  saveDatabase();
-  const count = getFileCountFromDb(database);
-  console.log(`[w-flow] Scan complete: ${count} files indexed`);
+  // Already validated this session, skip
 }
 
-async function walkDir(dir: string, vaultPath: string, database: import("sql.js").Database): Promise<void> {
+interface FileInfo {
+  mtime: number;
+}
+
+async function incrementalSync(vaultPath: string, database: import("sql.js").Database): Promise<void> {
+  // Collect all .md files on disk with mtime
+  const diskFiles = new Map<string, FileInfo>();
+  await collectFiles(vaultPath, vaultPath, diskFiles);
+
+  // Get existing DB entries (rel_path → mtime)
+  const dbMtimes = getDbMtimes(database);
+
+  // Delete stale entries
+  let deleted = 0;
+  for (const relPath of dbMtimes.keys()) {
+    if (!diskFiles.has(relPath)) {
+      removeFileFromDb(database, relPath);
+      deleted++;
+    }
+  }
+
+  // Add or update changed files
+  let added = 0;
+  let updated = 0;
+  for (const [relPath, info] of diskFiles) {
+    const dbMtime = dbMtimes.get(relPath);
+    if (dbMtime !== undefined && dbMtime === info.mtime) {
+      continue; // unchanged
+    }
+    const fullPath = path.join(vaultPath, relPath);
+    const entry = await buildFileEntry(fullPath, relPath);
+    if (entry) {
+      upsertFile(database, entry, info.mtime);
+      if (dbMtime === undefined) {
+        added++;
+      } else {
+        updated++;
+      }
+    }
+  }
+
+  saveDatabase();
+  const count = getFileCountFromDb(database);
+  console.log(`[w-flow] Sync complete: ${count} files (+${added} new, ${updated} updated, -${deleted} removed)`);
+}
+
+async function collectFiles(dir: string, vaultPath: string, result: Map<string, FileInfo>): Promise<void> {
   let entries: import("fs").Dirent[];
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
@@ -54,14 +98,12 @@ async function walkDir(dir: string, vaultPath: string, database: import("sql.js"
       if (HIDDEN_DIRS.has(entry.name)) {
         continue;
       }
-      await walkDir(path.join(dir, entry.name), vaultPath, database);
+      await collectFiles(path.join(dir, entry.name), vaultPath, result);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.relative(vaultPath, fullPath);
-      const fileEntry = await buildFileEntry(fullPath, relPath);
-      if (fileEntry) {
-        upsertFile(database, fileEntry);
-      }
+      const stat = await fs.stat(fullPath);
+      result.set(relPath, { mtime: stat.mtimeMs });
     }
   }
 }
@@ -111,7 +153,8 @@ export async function updateFile(
   const fullPath = path.join(vaultPath, relativePath);
   const entry = await buildFileEntry(fullPath, relativePath);
   if (entry) {
-    upsertFile(database, entry);
+    const stat = await fs.stat(fullPath);
+    upsertFile(database, entry, stat.mtimeMs);
   } else {
     removeFileFromDb(database, relativePath);
   }

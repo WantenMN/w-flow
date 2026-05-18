@@ -73,10 +73,10 @@ export function closeDatabase(): void {
   }
 }
 
-export function upsertFile(db: SqlJsDatabase, entry: FileEntry): void {
+export function upsertFile(db: SqlJsDatabase, entry: FileEntry, mtime: number = 0): void {
   db.run(
-    `INSERT INTO files (rel_path, name, folder, ext, size, full_path, frontmatter_json, tags_json, indexed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO files (rel_path, name, folder, ext, size, full_path, frontmatter_json, tags_json, indexed_at, mtime)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(rel_path) DO UPDATE SET
        name = excluded.name,
        folder = excluded.folder,
@@ -85,7 +85,8 @@ export function upsertFile(db: SqlJsDatabase, entry: FileEntry): void {
        full_path = excluded.full_path,
        frontmatter_json = excluded.frontmatter_json,
        tags_json = excluded.tags_json,
-       indexed_at = excluded.indexed_at`,
+       indexed_at = excluded.indexed_at,
+       mtime = excluded.mtime`,
     [
       entry.file.path,
       entry.file.name,
@@ -96,6 +97,7 @@ export function upsertFile(db: SqlJsDatabase, entry: FileEntry): void {
       JSON.stringify(entry.frontmatter),
       JSON.stringify(entry.file.tags),
       Date.now(),
+      mtime,
     ],
   );
 }
@@ -125,6 +127,17 @@ export function getFileCountFromDb(db: SqlJsDatabase): number {
 
 export function clearDatabase(db: SqlJsDatabase): void {
   db.run("DELETE FROM files");
+}
+
+export function getDbMtimes(db: SqlJsDatabase): Map<string, number> {
+  const map = new Map<string, number>();
+  const stmt = db.prepare("SELECT rel_path, mtime FROM files");
+  while (stmt.step()) {
+    const row = stmt.getAsObject();
+    map.set(row.rel_path as string, (row.mtime as number) || 0);
+  }
+  stmt.free();
+  return map;
 }
 
 interface DbRow {
