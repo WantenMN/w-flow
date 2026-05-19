@@ -43,6 +43,7 @@ export async function getDatabase(storagePath: string): Promise<SqlJsDatabase> {
       full_path TEXT NOT NULL,
       frontmatter_json TEXT DEFAULT '{}',
       tags_json TEXT DEFAULT '[]',
+      mtime INTEGER DEFAULT 0,
       indexed_at INTEGER NOT NULL
     )
   `);
