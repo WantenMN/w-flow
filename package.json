@@ -15,10 +15,30 @@
     "Other"
   ],
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onCustomEditor:w-flow.baseEditor"
-  ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wflow-sidebar",
+          "title": "w-flow",
+          "icon": "media/w-flow.svg"
+        }
+      ]
+    },
+    "views": {
+      "wflow-sidebar": [
+        {
+          "id": "w-flow.commandsView",
+          "name": "Commands",
+          "icon": "media/w-flow.svg"
+        },
+        {
+          "id": "w-flow.notesView",
+          "name": "Notes",
+          "icon": "media/w-flow.svg"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "w-flow.openDailyLog",
@@ -39,8 +59,21 @@
       {
         "command": "w-flow.insertNoteTemplate",
         "title": "Insert Note Template"
+      },
+      {
+        "command": "w-flow.refreshNotes",
+        "title": "Refresh Notes"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "w-flow.refreshNotes",
+          "when": "view == w-flow.notesView",
+          "group": "navigation"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "w-flow.insertTime",

@@ -6,8 +6,22 @@ import { createNote } from "./commands/createNote";
 import { insertNoteTemplate } from "./commands/insertNoteTemplate";
 import { BaseEditorProvider } from "./dataView/baseEditorProvider";
 import { VAULT_PATH } from "./dataView/constants";
+import { CommandsViewProvider } from "./sidebar/commandsView";
+import { NotesViewProvider } from "./sidebar/notesView";
 
 export function activate(context: vscode.ExtensionContext) {
+  // Register sidebar commands view
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("w-flow.commandsView", new CommandsViewProvider()),
+  );
+
+  // Register sidebar notes view
+  const notesViewProvider = new NotesViewProvider();
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("w-flow.notesView", notesViewProvider),
+    vscode.commands.registerCommand("w-flow.refreshNotes", () => notesViewProvider.refresh()),
+  );
+
   // Register custom editor for .base files
   const baseEditorProvider = new BaseEditorProvider(context);
   context.subscriptions.push(
