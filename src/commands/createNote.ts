@@ -35,15 +35,7 @@ export async function createNote() {
   const content = [
     "---",
     `date: ${dateStr}`,
-    "tags:",
-    "status:",
-    "  - P0",
-    "  - Not_Started",
-    "aliases:",
-    `  - ${name}`,
     "---",
-    "",
-    `# ${name}`,
     "",
     "",
   ].join("\n");

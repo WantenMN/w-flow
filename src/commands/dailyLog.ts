@@ -22,7 +22,7 @@ export async function openDailyLog() {
   }
 
   if (!fs.existsSync(filePath)) {
-    const content = `---\ndate: ${currentTime}\ntags:\n  - Daily_Log\n---\n\n# ${year}-${month}-${day}\n\n## ${hour}:${minute}\n\n`;
+    const content = `---\ndate: ${currentTime}\n---\n\n# ${year}-${month}-${day}\n\n## ${hour}:${minute}\n\n`;
     fs.writeFileSync(filePath, content);
   }
 
