@@ -36,10 +36,19 @@
           "id": "w-flow.notesView",
           "name": "Notes",
           "icon": "media/w-flow.svg"
+        },
+        {
+          "id": "w-flow.worksView",
+          "name": "Works",
+          "icon": "media/w-flow.svg"
         }
       ]
     },
     "commands": [
+      {
+        "command": "w-flow.openVault",
+        "title": "Open Vault"
+      },
       {
         "command": "w-flow.openDailyLog",
         "title": "Open Daily Log"
@@ -59,6 +68,10 @@
       {
         "command": "w-flow.refreshNotes",
         "title": "Refresh Notes"
+      },
+      {
+        "command": "w-flow.refreshWorks",
+        "title": "Refresh Works"
       }
     ],
     "menus": {
@@ -66,6 +79,11 @@
         {
           "command": "w-flow.refreshNotes",
           "when": "view == w-flow.notesView",
+          "group": "navigation"
+        },
+        {
+          "command": "w-flow.refreshWorks",
+          "when": "view == w-flow.worksView",
           "group": "navigation"
         }
       ]

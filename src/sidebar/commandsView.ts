@@ -14,7 +14,9 @@ class CommandItem extends vscode.TreeItem {
 
 export class CommandsViewProvider implements vscode.TreeDataProvider<CommandItem> {
   private readonly items: CommandItem[] = [
+    new CommandItem("Open Vault", "w-flow.openVault", new vscode.ThemeIcon("folder-opened")),
     new CommandItem("Open Daily Log", "w-flow.openDailyLog", new vscode.ThemeIcon("notebook")),
+    new CommandItem("Insert Time", "w-flow.insertTime", new vscode.ThemeIcon("clock")),
     new CommandItem("Create Note", "w-flow.createNote", new vscode.ThemeIcon("file-add")),
   ];
 
@@ -22,7 +24,7 @@ export class CommandsViewProvider implements vscode.TreeDataProvider<CommandItem
     return element;
   }
 
-  getChildren(_element?: CommandItem): CommandItem[] {
-    return _element ? [] : this.items;
+  getChildren(): CommandItem[] {
+    return this.items;
   }
 }
