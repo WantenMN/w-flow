@@ -11,7 +11,7 @@ export async function openDailyLog() {
   const hour = now.getHours().toString().padStart(2, "0");
   const minute = now.getMinutes().toString().padStart(2, "0");
 
-  const basePath = path.join(VAULT_PATH, "00-logs");
+  const basePath = path.join(VAULT_PATH, "logs");
   const yearPath = path.join(basePath, year);
   const monthPath = path.join(yearPath, `${year}-${month}`);
   const filePath = path.join(monthPath, `${year}-${month}-${day}.md`);

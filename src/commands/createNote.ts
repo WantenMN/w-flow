@@ -20,7 +20,7 @@ export async function createNote() {
   const minute = now.getMinutes().toString().padStart(2, "0");
   const dateStr = `${year}-${month}-${day} ${hour}:${minute}`;
 
-  const dir = path.join(VAULT_PATH, "99-all", year, `${year}-${month}`);
+  const dir = path.join(VAULT_PATH, "all", year, `${year}-${month}`);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
