@@ -16,10 +16,20 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register sidebar notes view
   const notesViewProvider = new NotesViewProvider();
+  const notesTreeView = vscode.window.createTreeView("w-flow.notesView", {
+    treeDataProvider: notesViewProvider,
+  });
+  const updateNotesCount = async () => {
+    notesTreeView.description = String(await notesViewProvider.getCount());
+  };
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("w-flow.notesView", notesViewProvider),
-    vscode.commands.registerCommand("w-flow.refreshNotes", () => notesViewProvider.refresh()),
+    notesTreeView,
+    vscode.commands.registerCommand("w-flow.refreshNotes", async () => {
+      notesViewProvider.refresh();
+      await updateNotesCount();
+    }),
   );
+  void updateNotesCount();
 
   // Register sidebar works view
   const worksViewProvider = new WorksViewProvider();

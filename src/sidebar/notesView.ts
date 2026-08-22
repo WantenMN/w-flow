@@ -11,16 +11,6 @@ interface NoteFile {
   uri: vscode.Uri;
 }
 
-class FolderItem extends vscode.TreeItem {
-  constructor(
-    public readonly folderName: string,
-    public readonly notes: NoteFile[],
-  ) {
-    super(folderName, vscode.TreeItemCollapsibleState.Expanded);
-    this.iconPath = new vscode.ThemeIcon("folder");
-  }
-}
-
 class NoteItem extends vscode.TreeItem {
   constructor(note: NoteFile) {
     super(note.name, vscode.TreeItemCollapsibleState.None);
@@ -36,40 +26,44 @@ class NoteItem extends vscode.TreeItem {
   }
 }
 
-export class NotesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-  private readonly _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | void>();
+export class NotesViewProvider implements vscode.TreeDataProvider<NoteItem> {
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<NoteItem | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private readonly folders = ["all", "blog"];
+  private cachedNotes: NoteFile[] = [];
 
   refresh(): void {
+    this.cachedNotes = [];
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+  async getCount(): Promise<number> {
+    return (await this.loadNotes()).length;
+  }
+
+  getTreeItem(element: NoteItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
-    if (!element) {
-      const folders = await Promise.all(
-        this.folders.map(async (folder) => {
-          const notes = await this.collectNotes(folder);
-          return new FolderItem(folder, notes);
-        }),
-      );
-      return folders.filter((folder) => folder.notes.length > 0);
+  async getChildren(): Promise<NoteItem[]> {
+    return (await this.loadNotes()).map((note) => new NoteItem(note));
+  }
+
+  private async loadNotes(): Promise<NoteFile[]> {
+    if (this.cachedNotes.length === 0) {
+      const notes = (
+        await Promise.all(this.folders.map((folder) => this.collectNotes(folder)))
+      ).flat();
+      notes.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
+      this.cachedNotes = notes;
     }
-    if (element instanceof FolderItem) {
-      return element.notes.map((note) => new NoteItem(note));
-    }
-    return [];
+    return this.cachedNotes;
   }
 
   private async collectNotes(folder: string): Promise<NoteFile[]> {
     const notes: NoteFile[] = [];
     await this.collect(path.join(VAULT_PATH, folder), notes);
-    notes.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
     return notes;
   }
 
