@@ -1,5 +1,4 @@
 const esbuild = require("esbuild");
-const fs = require("fs");
 const path = require("path");
 
 const production = process.argv.includes('--production');
@@ -49,11 +48,6 @@ async function main() {
 	} else {
 		await ctx.rebuild();
 		await ctx.dispose();
-		// Copy sql.js WASM to dist for packaging
-		const wasmSrc = path.join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm');
-		const wasmDst = path.join(__dirname, 'dist/sql-wasm.wasm');
-		fs.copyFileSync(wasmSrc, wasmDst);
-		console.log('[build] copied sql-wasm.wasm to dist/');
 	}
 }
 

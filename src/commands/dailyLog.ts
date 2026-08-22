@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import { VAULT_PATH } from "../dataView/constants";
+import { VAULT_PATH } from "../shared/constants";
 
 export async function openDailyLog() {
   const now = new Date();
