@@ -93,6 +93,11 @@
         "command": "w-flow.insertTime",
         "key": "ctrl+i",
         "when": "editorTextFocus && editorLangId == 'markdown' && resourcePath =~ /vault/"
+      },
+      {
+        "command": "w-flow.insertNoteTemplate",
+        "key": "alt+t",
+        "when": "editorTextFocus && editorLangId == 'markdown'"
       }
     ]
   },
