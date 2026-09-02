@@ -30,7 +30,7 @@ export class NotesViewProvider implements vscode.TreeDataProvider<NoteItem> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<NoteItem | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  private readonly folders = ["all", "blog"];
+  private readonly folders = ["notes", "inbox"];
   private cachedNotes: NoteFile[] = [];
 
   refresh(): void {
