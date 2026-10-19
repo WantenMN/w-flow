@@ -15,3 +15,7 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 pnpm-lock.yaml
 pnpm-workspace.yaml
+.npmrc
+flake.nix
+flake.lock
+.github/**
